@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meowtel Admin - ระบบจัดการหลังบ้าน</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap">
+    <style>
+        * { box-sizing: border-box; font-family: 'Kanit', sans-serif; margin: 0; padding: 0; }
+        body { background-color: #fff5eb; padding: 30px; color: #451a03; }
+        .login-wrapper { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
+        .login-card { background: #ffffff; border-radius: 20px; padding: 40px; box-shadow: 0 10px 30px rgba(217, 119, 6, 0.15); border: 2px solid #fde68a; width: 100%; max-width: 400px; text-align: center; }
+        .login-input { width: 100%; padding: 12px 16px; border: 2px solid #fde68a; border-radius: 12px; background-color: #fffbeb; font-size: 16px; text-align: center; margin-bottom: 15px; outline: none; }
+        .btn-login { width: 100%; padding: 12px; background-color: #f59e0b; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+        #adminDashboard { display: none; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .logo { font-size: 24px; font-weight: 700; color: #d97706; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; background: #fef3c7; border: 2px solid #fde68a; border-radius: 12px; cursor: pointer; font-weight: 600; color: #b45309; }
+        .tab-btn.active { background: #f59e0b; color: white; border-color: #d97706; }
+        .card { background: #ffffff; border-radius: 16px; padding: 25px; box-shadow: 0 4px 15px rgba(237, 137, 54, 0.08); border: 2px solid #ffeedd; margin-bottom: 25px; }
+        .section { display: none; }
+        .section.active { display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #fde68a; font-size: 14px; }
+        th { background-color: #fef3c7; color: #b45309; font-weight: 600; }
+        
+        .status-select { padding: 6px 10px; border-radius: 8px; font-weight: 600; border: 2px solid #fde68a; background: #fffbeb; cursor: pointer; font-size: 13px; }
+        button { padding: 8px 14px; background-color: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-danger { background-color: #ef4444; }
+
+        .stock-control { display: flex; align-items: center; gap: 6px; }
+        .stock-btn { padding: 6px 12px; background-color: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .stock-input { width: 60px; text-align: center; padding: 6px; font-weight: bold; border: 2px solid #fde68a; border-radius: 6px; background: #fffbeb; }
+    </style>
+</head>
+<body>
+
+    <div id="loginSection" class="login-wrapper">
+        <div class="login-card">
+            <div style="font-size: 50px; margin-bottom: 10px;">🔐</div>
+            <h2>Meowtel Admin</h2>
+            <p>กรุณากรอกรหัสผ่านเพื่อเข้าใช้งานระบบหลังบ้าน</p>
+            <form onsubmit="handleLogin(event)">
+                <input type="password" id="adminPassword" class="login-input" placeholder="รหัสผ่าน..." required autofocus>
+                <button type="submit" class="btn-login">เข้าสู่ระบบ ➔</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="adminDashboard">
+        <div class="header">
+            <div class="logo">🛠️ Meowtel Admin Dashboard</div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="location.href='index.html'" style="background: #64748b;">🏠 ไปหน้าเว็บลูกค้า</button>
+                <button onclick="loadData()" style="background: #f59e0b;">🔄 รีเฟรช</button>
+                <button onclick="handleLogout()" style="background: #ef4444;">🚪 ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('bookings', this)">📋 รายการจองและเงินเข้า</button>
+            <button class="tab-btn" onclick="switchTab('rooms', this)">🏠 จัดการห้องพัก & สต็อก</button>
+        </div>
+
+        <div id="section-bookings" class="section active">
+            <div class="card">
+                <h3 style="color: #92400e; margin-bottom: 10px;">💰 รายการจองทั้งหมด</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>ผู้จอง / เบอร์โทร</th><th>ห้องพัก</th><th>ช่วงเวลา</th><th>สัตว์เลี้ยง</th><th>ยอดเงิน / ธนาคาร</th><th>สถานะ</th><th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingTableBody"><tr><td colspan="8" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="section-rooms" class="section">
+            <div class="card">
+                <h3 style="color: #92400e; margin-bottom: 15px;">🏠 จัดการราคา & สต็อกห้องว่าง</h3>
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>ชื่อห้อง</th><th>ราคา/คืน</th><th>ปรับจำนวนห้องว่าง (+ / -)</th><th>จัดการ</th></tr>
+                    </thead>
+                    <tbody id="roomTableBody"><tr><td colspan="5" style="text-align: center;">กำลังโหลดห้องพัก...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        const CORRECT_PASSWORD = 'Meowtel';
+        let localRooms = [];
+        let localBookings = [];
+
+        window.onload = function() {
+            if (sessionStorage.getItem('isAdminLoggedIn') === 'true') { showDashboard(); }
+        };
+
+        function handleLogin(e) {
+            e.preventDefault();
+            if (document.getElementById('adminPassword').value === CORRECT_PASSWORD) {
+                sessionStorage.setItem('isAdminLoggedIn', 'true');
+                showDashboard();
+            } else { alert('❌ รหัสผ่านไม่ถูกต้อง'); }
+        }
+
+        function handleLogout() { sessionStorage.removeItem('isAdminLoggedIn'); location.reload(); }
+        function showDashboard() { document.getElementById('loginSection').style.display = 'none'; document.getElementById('adminDashboard').style.display = 'block'; loadData(); }
+
+        function switchTab(tabName, btn) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`section-${tabName}`).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function loadData() { loadBookings(); loadRooms(); }
+
+        async function loadBookings() {
+            try {
+                const res = await fetch(`${API_URL}/admin/bookings`);
+                const data = await res.json();
+                if (data.success) { localBookings = data.bookings; renderBookingsTable(localBookings); }
+            } catch (err) {}
+        }
+
+        function renderBookingsTable(bookings) {
+            const tbody = document.getElementById('bookingTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (bookings.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">ยังไม่มีรายการจอง</td></tr>'; return; }
+            bookings.forEach(b => {
+                let petsText = b.pets ? b.pets.map(p => `${p.name} (${p.breed})`).join(', ') : '-';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${b.id}</td>
+                        <td>${b.ownerName}<br><small>${b.ownerPhone}</small></td>
+                        <td>${b.roomName}</td>
+                        <td>${b.checkIn} ถึง ${b.checkOut}</td>
+                        <td><small>${petsText}</small></td>
+                        <td><b style="color:#10b981;">+${Number(b.totalPrice).toLocaleString()} ฿</b><br><small>🏦 ${b.bank}</small></td>
+                        <td>
+                            <select class="status-select" onchange="updateBookingStatus(${b.id}, this.value)">
+                                <option value="รอดำเนินการ" ${b.status === 'รอดำเนินการ' ? 'selected' : ''}>⏳ รอดำเนินการ</option>
+                                <option value="เข้าพักแล้ว" ${b.status === 'เข้าพักแล้ว' ? 'selected' : ''}>🏠 เข้าพักแล้ว</option>
+                                <option value="ออกแล้ว" ${b.status === 'ออกแล้ว' ? 'selected' : ''}>✅ ออกแล้ว</option>
+                            </select>
+                        </td>
+                        <td><button class="btn-danger" onclick="deleteBooking(${b.id})">ลบ</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function updateBookingStatus(id, newStatus) {
+            await fetch(`${API_URL}/admin/bookings/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
+        }
+
+        async function loadRooms() {
+            try {
+                const res = await fetch(`${API_URL}/rooms`);
+                const data = await res.json();
+                if (data.success) { localRooms = data.rooms; renderRoomsTable(localRooms); }
+            } catch (err) {}
+        }
+
+        function renderRoomsTable(rooms) {
+            const tbody = document.getElementById('roomTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            rooms.forEach(r => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${r.id}</td>
+                        <td><strong>${r.name}</strong><br><small>${r.desc}</small></td>
+                        <td><input type="number" value="${r.price}" onchange="updatePrice(${r.id}, this.value)" style="width:90px; padding:6px; font-weight:bold; border:2px solid #fde68a; border-radius:6px;"> ฿</td>
+                        <td>
+                            <div class="stock-control">
+                                <button type="button" class="stock-btn" onclick="updateStock(${r.id}, ${r.available - 1})">-</button>
+                                <input type="number" id="stock-${r.id}" class="stock-input" value="${r.available}" min="0" onchange="updateStock(${r.id}, this.value)">
+                                <button type="button" class="stock-btn" onclick="updateStock(${r.id}, ${r.available + 1})">+</button>
+                            </div>
+                        </td>
+                        <td><button class="btn-danger" onclick="deleteRoom(${r.id})">ลบห้อง</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function updatePrice(id, price) { await fetch(`${API_URL}/admin/rooms/${id}/price`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price }) }); }
+        
+        async function updateStock(id, count) {
+            if (count < 0) return;
+            const room = localRooms.find(r => r.id === id);
+            if (room) {
+                room.available = parseInt(count);
+                renderRoomsTable(localRooms);
+            }
+            try {
+                await fetch(`${API_URL}/admin/rooms/${id}/available`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ available: count })
+                });
+            } catch (err) {}
+        }
+
+        async function deleteRoom(id) { await fetch(`${API_URL}/admin/rooms/${id}`, { method: 'DELETE' }); loadRooms(); }
+        async function deleteBooking(id) { await fetch(`${API_URL}/admin/bookings/${id}`, { method: 'DELETE' }); loadBookings(); }
+    </script>
+</body>
+</html>

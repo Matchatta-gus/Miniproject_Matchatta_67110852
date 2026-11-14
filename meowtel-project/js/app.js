@@ -1,0 +1,193 @@
+const API_URL = 'http://localhost:3000/api';
+let roomsData = [];
+let selectedRoomData = null;
+let computedTotalPrice = 0;
+
+window.onload = function() {
+    fetchRooms();
+    renderPetForms();
+};
+
+async function fetchRooms() {
+    try {
+        const res = await fetch(`${API_URL}/rooms`);
+        const data = await res.json();
+        if (data.success) {
+            roomsData = data.rooms;
+            renderRooms();
+        }
+    } catch (err) {
+        console.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', err);
+    }
+}
+
+function renderRooms() {
+    const container = document.getElementById('roomGridContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    roomsData.forEach(room => {
+        const isFull = room.available <= 0;
+        const card = document.createElement('div');
+        card.className = `room-card ${isFull ? 'disabled' : ''}`;
+        
+        if (selectedRoomData && selectedRoomData.id === room.id && !isFull) {
+            card.classList.add('selected');
+        }
+
+        if (!isFull) {
+            card.onclick = () => selectRoom(card, room.id, room.name, room.price);
+        }
+
+        card.innerHTML = `
+            <span class="room-badge ${isFull ? 'badge-full' : 'badge-available'}">${isFull ? 'ห้องเต็ม' : `ว่าง ${room.available} ห้อง`}</span>
+            <img src="${room.img}" alt="${room.name}" class="room-img" style="width:100%; height:160px; object-fit:cover;">
+            <div class="room-info" style="padding:15px;">
+                <div class="room-title" style="font-weight:600; color:#b45309;">${room.name}</div>
+                <div class="room-desc" style="font-size:13px; color:#78350f; margin:6px 0;">${room.desc}</div>
+                <div class="room-price" style="font-size:18px; font-weight:700; color:#ef4444; text-align:right;">${room.price.toLocaleString()} ฿ /คืน</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function goToPage(pageNumber) {
+    if (pageNumber === 2 && !selectedRoomData) {
+        alert('❌ กรุณาเลือกห้องพักที่ต้องการก่อนครับ');
+        return;
+    }
+
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.querySelectorAll('.step-pill').forEach(pill => pill.classList.remove('active'));
+
+    if (pageNumber === 1) {
+        document.getElementById('page1').classList.add('active');
+        document.getElementById('pill1').classList.add('active');
+        fetchRooms();
+    } else if (pageNumber === 2) {
+        document.getElementById('page2').classList.add('active');
+        document.getElementById('pill2').classList.add('active');
+    } else if (pageNumber === 3) {
+        document.getElementById('page3').classList.add('active');
+        document.getElementById('pill3').classList.add('active');
+    } else if (pageNumber === 'success') {
+        document.getElementById('pageSuccess').classList.add('active');
+    }
+}
+
+function selectRoom(element, id, name, price) {
+    document.querySelectorAll('.room-card').forEach(card => card.classList.remove('selected'));
+    element.classList.add('selected');
+    selectedRoomData = { id, name, price };
+    
+    document.getElementById('sideRoomName').innerText = name;
+    document.getElementById('sideRoomPrice').innerText = `${price.toLocaleString()} ฿ /คืน`;
+    updateSummaryDates();
+}
+
+function renderPetForms() {
+    const petCountEl = document.getElementById('petCount');
+    if (!petCountEl) return;
+    const count = parseInt(petCountEl.value);
+    const container = document.getElementById('petFormsContainer');
+    container.innerHTML = '';
+
+    for (let i = 1; i <= count; i++) {
+        container.innerHTML += `
+            <div class="pet-item-box" style="background:#fff7ed; border:1.5px dashed #f59e0b; border-radius:12px; padding:15px; margin-bottom:15px;">
+                <div style="font-weight:600; margin-bottom:8px; color:#92400e;">🐱 สัตว์เลี้ยงตัวที่ ${i}</div>
+                <div class="form-row" style="display:flex; gap:15px;">
+                    <div class="form-group" style="flex:1;"><label>ชื่อสัตว์เลี้ยง:</label><input type="text" id="catName_${i}" placeholder="เช่น น้องส้ม" required style="width:100%; padding:10px; border:2px solid #fde68a; border-radius:10px;"></div>
+                    <div class="form-group" style="flex:1;"><label>สายพันธุ์:</label><input type="text" id="catBreed_${i}" placeholder="เช่น เปอร์เซีย" required style="width:100%; padding:10px; border:2px solid #fde68a; border-radius:10px;"></div>
+                </div>
+            </div>
+        `;
+    }
+    document.getElementById('sideCatCount').innerText = `${count} ตัว`;
+}
+
+function updateSummaryDates() {
+    const checkInVal = document.getElementById('checkIn').value;
+    const checkOutVal = document.getElementById('checkOut').value;
+    
+    if (checkInVal && checkOutVal && selectedRoomData) {
+        const checkIn = new Date(checkInVal);
+        const checkOut = new Date(checkOutVal);
+        const nights = (checkOut - checkIn) / (1000 * 60 * 60 * 24);
+
+        if (nights > 0) {
+            computedTotalPrice = nights * selectedRoomData.price;
+            document.getElementById('sideDates').innerText = `${checkInVal} ถึง ${checkOutVal}`;
+            document.getElementById('sideNights').innerText = `${nights} คืน`;
+            document.getElementById('sideTotalPrice').innerText = `${computedTotalPrice.toLocaleString()} ฿`;
+        }
+    }
+}
+
+function handleInfoSubmit(e) {
+    e.preventDefault();
+    const ownerName = document.getElementById('ownerName').value;
+    const ownerPhone = document.getElementById('ownerPhone').value;
+    const petCount = parseInt(document.getElementById('petCount').value);
+
+    let petListHtml = '';
+    for (let i = 1; i <= petCount; i++) {
+        const name = document.getElementById(`catName_${i}`).value;
+        const breed = document.getElementById(`catBreed_${i}`).value;
+        petListHtml += `<div>• ${name} (${breed})</div>`;
+    }
+
+    document.getElementById('sideOwner').innerText = `${ownerName} (${ownerPhone})`;
+    document.getElementById('sideCatList').innerHTML = petListHtml;
+    goToPage(3);
+}
+
+async function handlePaymentSubmit(e) {
+    e.preventDefault();
+    const bank = prompt("กรุณาเลือกธนาคารที่ต้องการชำระ (เช่น กสิกรไทย, ไทยพาณิชย์, พร้อมเพย์):", "พร้อมเพย์");
+    if (!bank) return;
+
+    const accountNumber = prompt("กรุณากรอกเลขที่บัญชีหรือเบอร์โทรศัพท์สำหรับตัดเงิน:", "061-781-6382");
+    if (!accountNumber) return;
+
+    const petCount = parseInt(document.getElementById('petCount').value);
+    let pets = [];
+    for (let i = 1; i <= petCount; i++) {
+        pets.push({
+            name: document.getElementById(`catName_${i}`).value,
+            breed: document.getElementById(`catBreed_${i}`).value
+        });
+    }
+
+    const payload = {
+        roomId: selectedRoomData.id,
+        ownerName: document.getElementById('ownerName').value,
+        ownerPhone: document.getElementById('ownerPhone').value,
+        checkIn: document.getElementById('checkIn').value,
+        checkOut: document.getElementById('checkOut').value,
+        pets: pets,
+        totalPrice: computedTotalPrice,
+        bank: bank,
+        accountNumber: accountNumber,
+        slipUrl: document.getElementById('slipUrl').value || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=400&q=80'
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/bookings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            alert(`✨ ชำระเงินจำนวน ${computedTotalPrice.toLocaleString()} บาท ผ่านธนาคาร ${bank} สำเร็จ! ตัดยอดเงินเรียบร้อยแล้ว`);
+            goToPage('success');
+        } else {
+            alert(result.message);
+        }
+    } catch (err) {
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+    }
+}

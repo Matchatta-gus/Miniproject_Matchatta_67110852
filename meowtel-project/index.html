@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meowtel Booking - ระบบจองห้องพักแมว</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(69, 26, 3, 0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .auth-card { background: #ffffff; border-radius: 20px; padding: 35px; width: 90%; max-width: 400px; text-align: center; border: 2px solid #fde68a; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+        .auth-card h2 { color: #d97706; margin-bottom: 6px; font-size: 24px; }
+        .auth-card p { color: #78350f; font-size: 13px; margin-bottom: 20px; }
+        .auth-input { width: 100%; padding: 12px 15px; border: 2px solid #fde68a; border-radius: 12px; font-size: 15px; margin-bottom: 12px; outline: none; background: #fffbeb; }
+        .auth-btn { width: 100%; padding: 12px; background: #f59e0b; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
+
+        .user-nav-bar { display: flex; align-items: center; gap: 10px; background: #fffbeb; padding: 6px 14px; border-radius: 50px; border: 1.5px solid #fde68a; }
+        .user-badge { font-size: 13px; font-weight: 600; color: #92400e; }
+        .btn-history { background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .btn-logout-user { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+        .history-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1500; }
+        .history-card { background: #ffffff; border-radius: 20px; padding: 25px; width: 92%; max-width: 650px; max-height: 85vh; overflow-y: auto; border: 2px solid #fde68a; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #fef3c7; padding-bottom: 12px; margin-bottom: 15px; }
+        .history-item { background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 15px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .history-item-top { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: #b45309; }
+        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-wait { background: #fef3c7; color: #92400e; }
+        .status-in { background: #dbeafe; color: #1e40af; }
+        .status-out { background: #d1fae5; color: #065f46; }
+
+        .line-qr-box { background: #f0fdf4; border: 2px solid #86efac; border-radius: 18px; padding: 20px 25px; margin: 15px auto 25px; max-width: 360px; box-shadow: 0 6px 15px rgba(16, 185, 129, 0.12); }
+        .line-badge { background: #06c755; color: #ffffff; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; display: inline-block; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="customerAuthModal" class="auth-overlay" style="display: none;">
+        <div class="auth-card">
+            <div style="font-size: 48px; margin-bottom: 8px;">🐱</div>
+            <h2>เข้าสู่ระบบ Meowtel</h2>
+            <p>กรอกชื่อผู้ใช้และรหัสผ่าน เพื่อจองห้องพักและดูประวัติการจองของคุณ</p>
+            <form onsubmit="handleCustomerAuth(event)">
+                <input type="text" id="authUsername" class="auth-input" placeholder="👤 ชื่อผู้ใช้..." required autofocus>
+                <input type="password" id="authPassword" class="auth-input" placeholder="🔑 รหัสผ่าน..." required>
+                <button type="submit" class="auth-btn">เข้าสู่ระบบ / สมัครสมาชิก ➔</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="historyModal" class="history-modal">
+        <div class="history-card">
+            <div class="history-header">
+                <h3 style="color: #92400e;">📜 ประวัติการจองของฉัน (<span id="historyOwnerLabel"></span>)</h3>
+                <button onclick="closeHistoryModal()" style="background: #cbd5e1; color: #1e293b; border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">✕ ปิด</button>
+            </div>
+            <div id="historyListContainer">
+                <div style="text-align: center; padding: 20px; color: #78350f;">กำลังโหลดประวัติการจอง...</div>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div class="logo-group">
+            <div class="logo"><span>🏠</span> Meowtel Booking</div>
+            <div class="shop-contact-header">
+                <span>📞 โทร: <strong>061-781-6382</strong></span>
+                <span>💬 Line ID: <strong>sugusju</strong></span>
+                <span>⏰ ร้านเปิด: <strong>09:00 - 21:00 น.</strong></span>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <div class="step-progress">
+                <span class="step-pill active" id="pill1">1. เลือกห้องพัก</span>
+                <span class="step-pill" id="pill2">2. กรอกข้อมูล</span>
+                <span class="step-pill" id="pill3">3. ชำระเงิน</span>
+            </div>
+            <div class="user-nav-bar" id="userNavBar" style="display: none;">
+                <span class="user-badge">👤 <span id="displayUsername"></span></span>
+                <button type="button" class="btn-history" onclick="openHistoryModal()">📜 ประวัติการจอง</button>
+                <button type="button" class="btn-logout-user" onclick="handleCustomerLogout()">ออกจากระบบ</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <main class="main-content">
+            <div id="page1" class="page active">
+                <h3 style="color: #92400e; margin-bottom: 15px;">🏠 เลือกประเภทห้องพักที่ต้องการ</h3>
+                <div class="room-grid" id="roomGridContainer"></div>
+                <div class="btn-group">
+                    <button type="button" onclick="goToPage(2)">ถัดไป: กรอกข้อมูลการจอง ➔</button>
+                </div>
+            </div>
+
+            <div id="page2" class="page">
+                <form id="infoForm" onsubmit="handleInfoSubmit(event)" style="display:flex; flex-direction:column; height:100%;">
+                    <div class="section-title">👤 ข้อมูลผู้ติดต่อ</div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="ownerName">ชื่อ-นามสกุล:</label><input type="text" id="ownerName" placeholder="สมชาย ใจดี" required></div>
+                        <div class="form-group"><label for="ownerPhone">เบอร์โทรศัพท์:</label><input type="tel" id="ownerPhone" placeholder="0812345678" pattern="[0-9]{9,10}" required></div>
+                    </div>
+                    <div class="section-title">🐾 ข้อมูลสัตว์เลี้ยงที่เข้าพัก</div>
+                    <div class="form-group">
+                        <label for="petCount">จำนวนสัตว์เลี้ยงที่เข้าพัก (ตัว):</label>
+                        <select id="petCount" onchange="renderPetForms()" required>
+                            <option value="1">1 ตัว</option>
+                            <option value="2">2 ตัว</option>
+                            <option value="3">3 ตัว</option>
+                            <option value="4">4 ตัว</option>
+                            <option value="5">5 ตัว</option>
+                            <option value="6">6 ตัว</option>
+                        </select>
+                    </div>
+                    <div id="petFormsContainer"></div>
+                    <div class="form-group">
+                        <label for="vaccineStatus">💉 ยืนยันเงื่อนไขวัคซีนและสุขภาพ:</label>
+                        <select id="vaccineStatus" required>
+                            <option value="">-- กรุณายืนยัน --</option>
+                            <option value="ได้รับวัคซีนพื้นฐานครบ / ไม่มีโรค / อายุ 3 เดือนขึ้นไป">ผ่านเกณฑ์ (ฉีดวัคซีนพื้นฐานครบ + ไม่มีโรค + อายุ 3 เดือนขึ้นไป)</option>
+                        </select>
+                    </div>
+                    <div class="section-title">📅 กำหนดการเข้าพัก</div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="checkIn">วันที่ Check-in:</label><input type="date" id="checkIn" onchange="updateSummaryDates()" required></div>
+                        <div class="form-group"><label for="checkOut">วันที่ Check-out:</label><input type="date" id="checkOut" onchange="updateSummaryDates()" required></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="note">📝 รายละเอียดเพิ่มเติม / คำขอพิเศษ:</label>
+                        <textarea id="note" placeholder="ข้อระวัง อาหารประจำตัว หรือคำขอเพิ่มเติม..."></textarea>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn-secondary" onclick="goToPage(1)">⬅ ย้อนกลับ</button>
+                        <button type="submit">ถัดไป: ชำระเงิน ➔</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="page3" class="page">
+                <h3 style="color: #92400e; margin-bottom: 10px;">💳 ชำระเงินผ่านพร้อมเพย์ & ธนาคาร</h3>
+                <div class="bank-details-box" style="text-align: center; background: #fffbeb; border: 2px solid #fde68a; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                    <span class="bank-badge" style="background:#0284c7; color:#fff; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:bold;">พร้อมเพย์ (PromptPay)</span>
+                    <div style="margin: 15px 0;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=0617816382" alt="PromptPay QR Code" style="border-radius: 12px; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                    </div>
+                    <div style="font-size: 13px; color: #78350f;">หมายเลขพร้อมเพย์</div>
+                    <div class="bank-account-num" style="font-size: 22px; font-weight: bold; color: #1e293b;">061-781-6382</div>
+                    <div style="font-size: 14px; color: #451a03; font-weight: 600;">ชื่อบัญชี: มัชฌัตตา ฉันท์วิรุฬห์กร</div>
+                </div>
+                <form id="paymentForm" onsubmit="handlePaymentSubmit(event)" style="display:flex; flex-direction:column; gap:15px;">
+                    <div class="form-group">
+                        <label for="payBank">🏦 เลือกธนาคาร/ช่องทางชำระเงิน:</label>
+                        <select id="payBank" required style="width:100%; padding:12px; border:2px solid #fde68a; border-radius:12px; background:#fffbeb;">
+                            <option value="">-- เลือกธนาคาร --</option>
+                            <option value="พร้อมเพย์ (PromptPay)">พร้อมเพย์ (PromptPay)</option>
+                            <option value="ธนาคารกสิกรไทย (KBANK)">ธนาคารกสิกรไทย (KBANK)</option>
+                            <option value="ธนาคารไทยพาณิชย์ (SCB)">ธนาคารไทยพาณิชย์ (SCB)</option>
+                            <option value="ธนาคารกรุงเทพ (BBL)">ธนาคารกรุงเทพ (BBL)</option>
+                            <option value="ธนาคารกรุงไทย (KTB)">ธนาคารกรุงไทย (KTB)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="payAccountNum">🔢 กรอกเลขที่บัญชีหรือเบอร์โทรศัพท์สำหรับตัดเงิน:</label>
+                        <input type="text" id="payAccountNum" placeholder="เช่น 0812345678 หรือ เลขบัญชีธนาคาร" required style="width:100%; padding:12px; border:2px solid #fde68a; border-radius:12px; background:#fffbeb;">
+                    </div>
+                    <div class="form-group">
+                        <label for="slipUrl">📎 แนบลิงก์สลิปโอนเงิน (หรือหลักฐานการชำระ):</label>
+                        <input type="text" id="slipUrl" placeholder="https://example.com/slip.jpg" required style="width:100%; padding:12px; border:2px solid #fde68a; border-radius:12px; background:#fffbeb;">
+                    </div>
+                    <div class="btn-group" style="display:flex; gap:15px; margin-top:10px;">
+                        <button type="button" class="btn-secondary" onclick="goToPage(2)" style="flex:1; padding:14px; background:#cbd5e1; border:none; border-radius:14px; font-weight:bold; cursor:pointer;">⬅ ย้อนกลับ</button>
+                        <button type="submit" class="btn-pay" style="flex:1; padding:14px; background:#10b981; color:#fff; border:none; border-radius:14px; font-weight:bold; cursor:pointer;">ยืนยันการชำระเงิน & ตัดเงินทันที ✨</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="pageSuccess" class="page" style="text-align: center; justify-content: center; align-items: center; padding: 30px 20px;">
+                <div style="font-size: 56px; margin-bottom: 8px;">🎉</div>
+                <h2 style="color: #065f46; margin-bottom: 6px;">การชำระเงินสำเร็จ!</h2>
+                <p style="color: #047857; font-size: 15px; margin-bottom: 10px;">ระบบได้ทำการตัดยอดเงินและบันทึกประวัติการจองของคุณเรียบร้อยแล้ว ✨</p>
+
+                <div class="line-qr-box">
+                    <span class="line-badge">💬 LINE Official / อัปเดตน้องแมว</span>
+                    <div style="font-size: 14px; color: #166534; font-weight: 600; margin-bottom: 10px;">
+                        สแกน QR Code เพื่อแอดไลน์ดูรูปและวิดีโอความเป็นอยู่ของน้องแมวได้วันละ 3 เวลา 🐾
+                    </div>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://line.me/ti/p/~sugusju" alt="Line QR Code sugusju" style="border-radius: 12px; border: 4px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 8px;">
+                    <div style="font-size: 15px; font-weight: 700; color: #15803d;">Line ID: sugusju</div>
+                    <div style="margin-top: 6px;">
+                        <a href="https://line.me/ti/p/~sugusju" target="_blank" style="font-size: 13px; color: #059669; text-decoration: underline;">หรือคลิกที่นี่เพื่อเปิดแอป Line</a>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" onclick="openHistoryModal()" style="background: #10b981; color: white; padding: 12px 24px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer;">📜 ดูประวัติการจอง</button>
+                    <button type="button" onclick="location.reload()" style="background: #f59e0b; color: white; padding: 12px 24px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer;">ทำรายการจองเพิ่ม</button>
+                </div>
+            </div>
+        </main>
+
+        <aside class="sidebar-summary">
+            <div class="sidebar-title">📍 ข้อมูลร้าน Meowtel</div>
+            <div class="shop-info-box">
+                <div><strong>📞 เบอร์โทรศัพท์:</strong> 061-781-6382</div>
+                <div><strong>💬 Line ID:</strong> sugusju</div>
+                <div><strong>⏰ เวลาเปิด-ปิด:</strong> 09:00 - 21:00 น.</div>
+                <div style="margin-top: 4px;"><strong>🏠 ที่อยู่ร้าน:</strong> 74 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110</div>
+            </div>
+
+            <div class="policy-box">
+                <div class="policy-title">⚠️ เงื่อนไขการรับเข้าพัก</div>
+                <ul style="padding-left: 18px; margin-bottom: 8px;">
+                    <li>ฉีดวัคซีนพื้นฐานครบ</li>
+                    <li>ไม่มีโรคติดต่อ / โรคประจำตัวร้ายแรง</li>
+                    <li>สัตว์เลี้ยงต้องมีอายุ 3 เดือนขึ้นไป</li>
+                </ul>
+                <div class="policy-title" style="color: #059669; margin-top: 8px;">📱 การอัปเดตชีวิตน้องแมว</div>
+                <div>ทางร้านจะอัปเดตความเคลื่อนไหวผ่าน Line ID: <strong>sugusju</strong> วันละ 3 เวลา ให้คุณแม่อุ่นใจแน่นอนค่ะ ✨</div>
+            </div>
+
+            <div class="sidebar-title">📋 สรุปรายละเอียดการจอง</div>
+            <div class="summary-row"><span>ห้องพักที่เลือก:</span><strong id="sideRoomName">ยังไม่ได้เลือก</strong></div>
+            <div class="summary-row"><span>ราคาห้องพัก:</span><strong id="sideRoomPrice">0 ฿ /คืน</strong></div>
+            <div class="summary-row"><span>ผู้ติดต่อ:</span><strong id="sideOwner">-</strong></div>
+            <div class="summary-row"><span>จำนวนสัตว์เลี้ยง:</span><strong id="sideCatCount">1 ตัว</strong></div>
+            <div class="summary-row" style="flex-direction: column; gap: 4px;"><span>รายชื่อสัตว์เลี้ยง:</span><div id="sideCatList" style="font-weight: 600; color: #451a03; text-align: right;">-</div></div>
+            <div class="summary-row" style="margin-top: 10px;"><span>วันเข้าพัก:</span><strong id="sideDates">-</strong></div>
+            <div class="summary-row"><span>จำนวน:</span><strong id="sideNights">-</strong></div>
+            <div class="summary-row total"><span>ยอดรวมทั้งหมด:</span><strong id="sideTotalPrice">0 ฿</strong></div>
+        </aside>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        let currentUser = JSON.parse(localStorage.getItem('meowtel_current_user'));
+
+        window.onload = function() {
+            if (!currentUser) {
+                document.getElementById('customerAuthModal').style.display = 'flex';
+            } else {
+                setupLoggedInUser();
+            }
+            renderRooms();
+            fetchRooms();
+            renderPetForms();
+        };
+
+        async function handleCustomerAuth(e) {
+            e.preventDefault();
+            const username = document.getElementById('authUsername').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+            if (!username || !password) return;
+
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('meowtel_current_user', JSON.stringify(currentUser));
+                    document.getElementById('customerAuthModal').style.display = 'none';
+                    setupLoggedInUser();
+                } else { alert(`❌ ${data.message}`); }
+            } catch (err) {}
+        }
+
+        function setupLoggedInUser() {
+            document.getElementById('userNavBar').style.display = 'flex';
+            document.getElementById('displayUsername').innerText = currentUser.username;
+            document.getElementById('historyOwnerLabel').innerText = currentUser.username;
+            document.getElementById('ownerName').value = currentUser.username;
+        }
+
+        function handleCustomerLogout() {
+            localStorage.removeItem('meowtel_current_user');
+            location.reload();
+        }
+
+        async function openHistoryModal() {
+            if (!currentUser) return;
+            document.getElementById('historyModal').style.display = 'flex';
+            const container = document.getElementById('historyListContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #78350f;">กำลังโหลดประวัติการจอง...</div>';
+
+            try {
+                const res = await fetch(`${API_URL}/bookings/user/${currentUser.id}`);
+                const data = await res.json();
+                if (data.success) renderHistoryList(data.bookings);
+            } catch (err) {}
+        }
+
+        function closeHistoryModal() { document.getElementById('historyModal').style.display = 'none'; }
+
+        function renderHistoryList(bookings) {
+            const container = document.getElementById('historyListContainer');
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 30px; color: #b45309;">คุณยังไม่มีประวัติการจองห้องพักครับ 🐱</div>';
+                return;
+            }
+            container.innerHTML = '';
+            bookings.forEach(b => {
+                let petsText = b.pets ? b.pets.map(p => `${p.name} (${p.breed})`).join(', ') : '-';
+                let statusClass = 'status-wait';
+                if (b.status === 'เข้าพักแล้ว') statusClass = 'status-in';
+                else if (b.status === 'ออกแล้ว') statusClass = 'status-out';
+
+                container.innerHTML += `
+                    <div class="history-item">
+                        <div class="history-item-top">
+                            <span>รหัสการจอง #${b.id} • ${b.room_name || b.roomName}</span>
+                            <span class="status-pill ${statusClass}">${b.status}</span>
+                        </div>
+                        <div style="font-size: 13px;">📅 เข้าพัก: ${b.check_in ? b.check_in.split('T')[0] : b.checkIn} ถึง ${b.check_out ? b.check_out.split('T')[0] : b.checkOut}</div>
+                        <div style="font-size: 13px;">🐾 น้องแมว: ${petsText}</div>
+                        <div style="font-size: 13px; color: #059669; font-weight: 600;">💰 ยอดชำระ: ${Number(b.total_price || b.totalPrice).toLocaleString()} ฿</div>
+                    </div>
+                `;
+            });
+        }
+
+        let roomsData = [
+            { id: 1, name: "Room 101 - Cozy Room", price: 300, desc: "📐 ขนาด: 1.0 x 1.2 เมตร (สูง 1.2 ม.)<br>📦 ความจุ: รองรับ 1 ตัว", img: "https://images.unsplash.com/photo-1513360371669-4adf3dd7dff8?auto=format&fit=crop&w=400&q=80", available: 3 },
+            { id: 2, name: "Room 102 - Warm Classic", price: 600, desc: "📐 ขนาด: 1.5 x 1.5 เมตร (สูง 1.5 ม.)<br>📦 ความจุ: รองรับ 1-2 ตัว", img: "https://images.unsplash.com/photo-1548802673-380ab8ebc7b7?auto=format&fit=crop&w=400&q=80", available: 1 },
+            { id: 3, name: "Room 103 - Superior View", price: 800, desc: "📐 ขนาด: 1.8 x 1.8 เมตร (สูง 1.8 ม.)<br>📦 ความจุ: รองรับ 2 ตัว", img: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=400&q=80", available: 2 },
+            { id: 4, name: "Room 104 - Deluxe Condo", price: 1200, desc: "📐 ขนาด: 2.0 x 2.2 เมตร (สูง 2.0 ม.)<br>📦 ความจุ: รองรับ 2-3 ตัว", img: "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=400&q=80", available: 1 },
+            { id: 5, name: "Room 105 - Executive Suite", price: 1400, desc: "📐 ขนาด: 2.5 x 2.5 เมตร (สูง 2.2 ม.)<br>📦 ความจุ: รองรับ 3-4 ตัว", img: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80", available: 1 },
+            { id: 6, name: "Room 106 - Royal Villa", price: 1600, desc: "📐 ขนาด: 3.0 x 3.0 เมตร (สูง 2.5 ม.)<br>📦 ความจุ: รองรับ 4-6 ตัว", img: "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=400&q=80", available: 2 }
+        ];
+
+        let selectedRoomData = null;
+        let computedTotalPrice = 0;
+
+        async function fetchRooms() {
+            try {
+                const res = await fetch(`${API_URL}/rooms`);
+                const data = await res.json();
+                if (data.success && data.rooms.length > 0) { roomsData = data.rooms; renderRooms(); }
+            } catch (err) {}
+        }
+
+        function renderRooms() {
+            const container = document.getElementById('roomGridContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            roomsData.forEach(room => {
+                const isFull = room.available <= 0;
+                const card = document.createElement('div');
+                card.className = `room-card ${isFull ? 'disabled' : ''}`;
+                if (selectedRoomData && selectedRoomData.id === room.id && !isFull) card.classList.add('selected');
+                if (!isFull) card.onclick = () => selectRoom(card, room.id, room.name, room.price);
+                card.innerHTML = `
+                    <span class="room-badge ${isFull ? 'badge-full' : 'badge-available'}">${isFull ? 'ห้องเต็ม' : `ว่าง ${room.available} ห้อง`}</span>
+                    <img src="${room.img}" alt="${room.name}" class="room-img" style="width:100%; height:160px; object-fit:cover;">
+                    <div class="room-info" style="padding:15px;">
+                        <div class="room-title" style="font-weight:600; color:#b45309;">${room.name}</div>
+                        <div class="room-desc" style="font-size:13px; color:#78350f; margin:6px 0;">${room.desc}</div>
+                        <div class="room-price" style="font-size:18px; font-weight:700; color:#ef4444; text-align:right;">${Number(room.price).toLocaleString()} ฿ /คืน</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function goToPage(pageNumber) {
+            if (pageNumber === 2 && !selectedRoomData) { alert('❌ กรุณาเลือกห้องพักที่ต้องการก่อนครับ'); return; }
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.step-pill').forEach(pill => pill.classList.remove('active'));
+            if (pageNumber === 1) { document.getElementById('page1').classList.add('active'); document.getElementById('pill1').classList.add('active'); fetchRooms(); }
+            else if (pageNumber === 2) { document.getElementById('page2').classList.add('active'); document.getElementById('pill2').classList.add('active'); }
+            else if (pageNumber === 3) { document.getElementById('page3').classList.add('active'); document.getElementById('pill3').classList.add('active'); }
+            else if (pageNumber === 'success') { document.getElementById('pageSuccess').classList.add('active'); }
+        }
+
+        function selectRoom(element, id, name, price) {
+            document.querySelectorAll('.room-card').forEach(card => card.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedRoomData = { id, name, price: Number(price) };
+            document.getElementById('sideRoomName').innerText = name;
+            document.getElementById('sideRoomPrice').innerText = `${Number(price).toLocaleString()} ฿ /คืน`;
+            updateSummaryDates();
+        }
+
+        function renderPetForms() {
+            const count = parseInt(document.getElementById('petCount').value);
+            const container = document.getElementById('petFormsContainer');
+            container.innerHTML = '';
+            for (let i = 1; i <= count; i++) {
+                container.innerHTML += `
+                    <div class="pet-item-box" style="background:#fff7ed; border:1.5px dashed #f59e0b; border-radius:12px; padding:15px; margin-bottom:15px;">
+                        <div style="font-weight:600; margin-bottom:8px; color:#92400e;">🐱 สัตว์เลี้ยงตัวที่ ${i}</div>
+                        <div class="form-row" style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <div class="form-group" style="flex: 1; min-width: 180px;">
+                                <label>ชื่อสัตว์เลี้ยง:</label>
+                                <input type="text" id="catName_${i}" placeholder="เช่น น้องส้ม" required style="width:100%; padding:10px; border:2px solid #fde68a; border-radius:10px; background:#fffbeb;">
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 180px;">
+                                <label>สายพันธุ์:</label>
+                                <select id="catBreedSelect_${i}" required style="width:100%; padding:10px; border:2px solid #fde68a; border-radius:10px; background:#fffbeb;">
+                                    <option value="">-- เลือกสายพันธุ์ --</option>
+                                    <option value="แมวไทย">แมวไทย</option>
+                                    <option value="เปอร์เซีย">เปอร์เซีย (Persian)</option>
+                                    <option value="สก็อตติช โฟลด์">สก็อตติช โฟลด์ (Scottish Fold)</option>
+                                    <option value="อเมริกัน ช็อตแฮร์">อเมริกัน ช็อตแฮร์</option>
+                                    <option value="บริติช ช็อตแฮร์">บริติช ช็อตแฮร์</option>
+                                    <option value="อื่นๆ">อื่นๆ</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('sideCatCount').innerText = `${count} ตัว`;
+
+            for (let i = 1; i <= count; i++) {
+                const nameInput = document.getElementById(`catName_${i}`);
+                const breedSelect = document.getElementById(`catBreedSelect_${i}`);
+                if (nameInput) nameInput.oninput = updateSideCatList;
+                if (breedSelect) breedSelect.onchange = updateSideCatList;
+            }
+            updateSideCatList();
+        }
+
+        function updateSideCatList() {
+            const count = parseInt(document.getElementById('petCount').value);
+            let listHTML = '';
+            for (let i = 1; i <= count; i++) {
+                const nameVal = document.getElementById(`catName_${i}`)?.value || `-`;
+                const breedVal = document.getElementById(`catBreedSelect_${i}`)?.value || `-`;
+                listHTML += `<div>- ${nameVal} (${breedVal})</div>`;
+            }
+            const sideCatListEl = document.getElementById('sideCatList');
+            if (sideCatListEl) {
+                sideCatListEl.innerHTML = listHTML;
+            }
+        }
+
+        function updateSummaryDates() {
+            const checkInVal = document.getElementById('checkIn').value;
+            const checkOutVal = document.getElementById('checkOut').value;
+            if (checkInVal && checkOutVal && selectedRoomData) {
+                const nights = (new Date(checkOutVal) - new Date(checkInVal)) / (1000 * 60 * 60 * 24);
+                if (nights > 0) {
+                    computedTotalPrice = nights * selectedRoomData.price;
+                    document.getElementById('sideDates').innerText = `${checkInVal} ถึง ${checkOutVal}`;
+                    document.getElementById('sideNights').innerText = `${nights} คืน`;
+                    document.getElementById('sideTotalPrice').innerText = `${computedTotalPrice.toLocaleString()} ฿`;
+                }
+            }
+        }
+
+        function handleInfoSubmit(e) {
+            e.preventDefault();
+            document.getElementById('sideOwner').innerText = `${document.getElementById('ownerName').value} (${document.getElementById('ownerPhone').value})`;
+            goToPage(3);
+        }
+
+        async function handlePaymentSubmit(e) {
+            e.preventDefault();
+            const petCount = parseInt(document.getElementById('petCount').value);
+            let pets = [];
+            for (let i = 1; i <= petCount; i++) {
+                pets.push({ 
+                    name: document.getElementById(`catName_${i}`).value, 
+                    breed: document.getElementById(`catBreedSelect_${i}`).value 
+                });
+            }
+
+            const payload = {
+                userId: currentUser ? currentUser.id : '',
+                roomId: selectedRoomData.id,
+                ownerName: document.getElementById('ownerName').value,
+                ownerPhone: document.getElementById('ownerPhone').value,
+                checkIn: document.getElementById('checkIn').value,
+                checkOut: document.getElementById('checkOut').value,
+                pets: pets,
+                totalPrice: computedTotalPrice,
+                bank: document.getElementById('payBank').value,
+                accountNumber: document.getElementById('payAccountNum').value,
+                slipUrl: document.getElementById('slipUrl').value
+            };
+
+            try {
+                await fetch(`${API_URL}/bookings`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
+            } catch (err) {}
+            goToPage('success');
+        }
+    </script>
+</body>
+</html>
