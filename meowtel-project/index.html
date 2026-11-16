@@ -136,17 +136,11 @@
                 </form>
             </div>
 
+            <!-- หน้าชำระเงิน (ตัด QR Code ออก ให้ตัดบัตร/โอนแล้วแนบสลิปพร้อม Alert) -->
             <div id="page3" class="page">
-                <h3 style="color: #92400e; margin-bottom: 10px;">💳 ชำระเงินผ่านพร้อมเพย์ & ธนาคาร</h3>
-                <div class="bank-details-box" style="text-align: center; background: #fffbeb; border: 2px solid #fde68a; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-                    <span class="bank-badge" style="background:#0284c7; color:#fff; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:bold;">พร้อมเพย์ (PromptPay)</span>
-                    <div style="margin: 15px 0;">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=0617816382" alt="PromptPay QR Code" style="border-radius: 12px; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                    </div>
-                    <div style="font-size: 13px; color: #78350f;">หมายเลขพร้อมเพย์</div>
-                    <div class="bank-account-num" style="font-size: 22px; font-weight: bold; color: #1e293b;">061-781-6382</div>
-                    <div style="font-size: 14px; color: #451a03; font-weight: 600;">ชื่อบัญชี: มัชฌัตตา ฉันท์วิรุฬห์กร</div>
-                </div>
+                <h3 style="color: #92400e; margin-bottom: 10px;">💳 ชำระเงินค่าบริการโรงแรมแมว</h3>
+                <p style="color: #78350f; font-size: 14px; margin-bottom: 20px;">กรุณากรอกข้อมูลการชำระเงินและแนบลิงก์รูปสลิปหลักฐานการโอนเงินด้านล่างนี้</p>
+                
                 <form id="paymentForm" onsubmit="handlePaymentSubmit(event)" style="display:flex; flex-direction:column; gap:15px;">
                     <div class="form-group">
                         <label for="payBank">🏦 เลือกธนาคาร/ช่องทางชำระเงิน:</label>
@@ -160,16 +154,16 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="payAccountNum">🔢 กรอกเลขที่บัญชีหรือเบอร์โทรศัพท์สำหรับตัดเงิน:</label>
+                        <label for="payAccountNum">🔢 เลขที่บัญชีผู้โอน / เบอร์โทรศัพท์:</label>
                         <input type="text" id="payAccountNum" placeholder="เช่น 0812345678 หรือ เลขบัญชีธนาคาร" required style="width:100%; padding:12px; border:2px solid #fde68a; border-radius:12px; background:#fffbeb;">
                     </div>
                     <div class="form-group">
-                        <label for="slipUrl">📎 แนบลิงก์สลิปโอนเงิน (หรือหลักฐานการชำระ):</label>
+                        <label for="slipUrl">📎 แนบลิงก์รูปสลิปหลักฐานการโอนเงิน:</label>
                         <input type="text" id="slipUrl" placeholder="https://example.com/slip.jpg" required style="width:100%; padding:12px; border:2px solid #fde68a; border-radius:12px; background:#fffbeb;">
                     </div>
                     <div class="btn-group" style="display:flex; gap:15px; margin-top:10px;">
                         <button type="button" class="btn-secondary" onclick="goToPage(2)" style="flex:1; padding:14px; background:#cbd5e1; border:none; border-radius:14px; font-weight:bold; cursor:pointer;">⬅ ย้อนกลับ</button>
-                        <button type="submit" class="btn-pay" style="flex:1; padding:14px; background:#10b981; color:#fff; border:none; border-radius:14px; font-weight:bold; cursor:pointer;">ยืนยันการชำระเงิน & ตัดเงินทันที ✨</button>
+                        <button type="submit" class="btn-pay" style="flex:1; padding:14px; background:#10b981; color:#fff; border:none; border-radius:14px; font-weight:bold; cursor:pointer;">ยืนยันการชำระเงินทันที ✨</button>
                     </div>
                 </form>
             </div>
@@ -483,13 +477,22 @@
             };
 
             try {
-                await fetch(`${API_URL}/bookings`, { 
+                const res = await fetch(`${API_URL}/bookings`, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify(payload) 
                 });
-            } catch (err) {}
-            goToPage('success');
+                const data = await res.json();
+                if (data.success) {
+                    // เด้ง Alert ยืนยันการชำระเงินสำเร็จ
+                    alert('🎉 ชำระเงินสำเร็จและบันทึกข้อมูลการจองเรียบร้อยแล้ว!');
+                    goToPage('success');
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + data.message);
+                }
+            } catch (err) {
+                alert('❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+            }
         }
     </script>
 </body>
